@@ -52,7 +52,7 @@ today = datetime.datetime.now().strftime("%A, %B %d, %Y")
 st.sidebar.caption(f"Date : {today}")
 
 # --- ONGLETS ---
-tab1, tab2, tab3, tab4 = tab1, tab2, tab3, tab4 = st.tabs(["🚀 Top Paris du Jour", "🔬 Analyse Match Deep-Dive", "📅 Calendrier & CLV", "📈 Gestion Bankroll"])
+tab1, tab2, tab3, tab4 = st.tabs(["🚀 Top Paris du Jour", "🔬 Analyse Match Deep-Dive", "📅 Calendrier des Matchs", "📈 Gestion Bankroll"])
 
 games_data = fetch_odds_api()
 
@@ -103,7 +103,6 @@ with tab2:
         away_t = team_parts[0]
         home_t = team_parts[1]
 
-        # En-tête du match style Infographie
         st.markdown(f"""
         <div class="deep-header">
             <h1 style="text-align:center; color:#58a6ff; margin-bottom:5px;">{away_t} &nbsp;@&nbsp; {home_t}</h1>
@@ -119,7 +118,6 @@ with tab2:
         </div>
         """, unsafe_allow_html=True)
 
-        # Ligne intermédiaire : alignements / cotes actuelles / score projeté
         col_lineup1, col_lineup2, col_side_info = st.columns([1, 1, 1])
         
         with col_lineup1:
@@ -165,7 +163,6 @@ with tab2:
 
         st.markdown("---")
 
-        # Grille centrale : Matrice des 100 points VS Key Takeaways & Best Bets
         col_matrix, col_analysis = st.columns([1.2, 1])
         
         with col_matrix:
@@ -201,7 +198,6 @@ with tab2:
 
         st.markdown("---")
 
-        # Ligne basse : Prop Targets & Validation finale
         col_prop_target, col_final_word = st.columns(2)
         
         with col_prop_target:
@@ -231,23 +227,34 @@ with tab2:
         st.info("En attente des données de matchs pour afficher l'analyse.")
 
 # ==========================================
-# ONGLET 3 : CALENDRIER & CLV
+# ONGLET 3 : CALENDRIER DES MATCHS À VENIR
 # ==========================================
 with tab3:
-    st.header("📅 Calendrier & Suivi de la Closing Line Value (CLV)")
-    with st.form("clv_form"):
-        c1, c2, c3, c4 = st.columns(4)
-        match_input = c1.text_input("Match")
-        bet_input = c2.text_input("Pari (ex: Victoire Extérieur)")
-        odds_taken = c3.number_input("Cote Prise", min_value=1.01, step=0.01)
-        odds_closing = c4.number_input("Cote Fermeture", min_value=1.01, step=0.01)
+    st.header("📅 Calendrier des Matchs NPB (Prochaines Rencontres)")
+    st.write("Retrouvez ci-dessous la liste planifiée des matchs à venir extraite en direct des flux officiels.")
+    
+    if games_data and len(games_data) > 0:
+        schedule_list = []
+        for game in games_data:
+            commence_time = game.get('commence_time', 'Date non spécifiée')
+            # Formatage propre de la date si possible
+            try:
+                dt_obj = datetime.datetime.fromisoformat(commence_time.replace('Z', '+00:00'))
+                formatted_date = dt_obj.strftime("%A %d %B %Y à %H:%M (UTC)")
+            except:
+                formatted_date = commence_time
+
+            schedule_list.append({
+                "Date / Horaire": formatted_date,
+                "Équipe Extérieure (Away)": game.get('away_team'),
+                "Équipe Domicile (Home)": game.get('home_team'),
+                "Statut": "Programmé ⚾"
+            })
         
-        if st.form_submit_button("Enregistrer le Pari"):
-            clv = ((odds_taken / odds_closing) - 1) * 100
-            if clv > 0:
-                st.success(f"CLV positive : +{clv:.2f}% (Excellent)")
-            else:
-                st.error(f"CLV négative : {clv:.2f}%")
+        df_schedule = pd.DataFrame(schedule_list)
+        st.dataframe(df_schedule, use_container_width=True)
+    else:
+        st.warning("Aucun calendrier de match disponible pour le moment sur l'API.")
 
 # ==========================================
 # ONGLET 4 : GESTION BANKROLL
