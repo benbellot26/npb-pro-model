@@ -5,7 +5,7 @@ import datetime
 import plotly.express as px
 
 # --- CONFIGURATION DU DASHBOARD ---
-st.set_page_config(page_title="Sleazey's Edge - NPB Model", layout="wide", page_icon="⚾")
+st.set_page_config(page_title="BenBellot - NPB Model", layout="wide", page_icon="⚾")
 
 st.markdown("""
     <style>
