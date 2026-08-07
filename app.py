@@ -17,6 +17,7 @@ st.markdown("""
         .deep-header { background: linear-gradient(135deg, #161b22 0%, #0d1117 100%); border: 2px solid #30363d; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
         .card-box { background-color: #161b22; border: 1px solid #30363d; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
         .schedule-card { background-color: #161b22; border: 1px solid #30363d; border-left: 5px solid #58a6ff; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+        .kpi-container { background-color: #161b22; border: 1px solid #30363d; padding: 20px; border-radius: 10px; text-align: center; margin-bottom: 15px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -241,7 +242,6 @@ with tab3:
             home_team = game.get('home_team', 'Équipe Domicile')
             commence_time = game.get('commence_time', '')
             
-            # Formatage de la date/heure
             try:
                 dt_obj = datetime.datetime.fromisoformat(commence_time.replace('Z', '+00:00'))
                 date_str = dt_obj.strftime("%A %d %B %Y")
@@ -250,7 +250,6 @@ with tab3:
                 date_str = "Date à confirmer"
                 time_str = commence_time
 
-            # Affichage sous forme de carte moderne
             st.markdown(f"""
             <div class='schedule-card'>
                 <table width="100%">
@@ -275,14 +274,80 @@ with tab3:
         st.warning("Aucun match planifié n'a pu être récupéré pour le moment.")
 
 # ==========================================
-# ONGLET 4 : GESTION BANKROLL
+# ONGLET 4 : GESTION BANKROLL (MODERNISÉ)
 # ==========================================
 with tab4:
-    st.header("📈 Suivi de la Bankroll (Objectif 1000 €)")
-    steps = [20.0, current_bankroll]
-    dates = ["Départ", "Aujourd'hui"]
-    df_bk = pd.DataFrame({"Temps": dates, "Capital": steps})
-    fig = px.line(df_bk, x="Temps", y="Capital", markers=True, title="Trajectoire de la Bankroll (€)")
-    fig.add_hline(y=1000, line_dash="dash", line_color="#2ea043", annotation_text="Objectif : 1000 €")
-    fig.update_layout(yaxis_range=[0, max(current_bankroll + 50, 1000)], template="plotly_dark")
+    st.header("📈 Dashboard & Suivi de Bankroll")
+    st.markdown("Suivi dynamique de votre progression vers l'objectif ultime de **1 000 €** à partir de **20 €**.")
+    st.markdown("---")
+
+    # Calculs indicateurs
+    start_capital = 20.0
+    profit = current_bankroll - start_capital
+    roi_percent = (profit / start_capital) * 100 if start_capital > 0 else 0
+    progress_percent = min(max((current_bankroll / 1000.0) * 100, 0.0), 100.0)
+
+    # Grille de KPIs Modernes
+    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+    with kpi1:
+        st.markdown(f"""
+        <div class='kpi-container'>
+            <span style="color:#8b949e; font-size:0.9rem;">CAPITAL ACTUEL</span>
+            <h2 style="color:#58a6ff; margin:5px 0;">{current_bankroll:.2f} €</h2>
+            <span style="color:#3fb950; font-size:0.85rem;">Départ : {start_capital:.1f} €</span>
+        </div>
+        """, unsafe_allow_html=True)
+    with kpi2:
+        st.markdown(f"""
+        <div class='kpi-container'>
+            <span style="color:#8b949e; font-size:0.9rem;">PROFIT NET</span>
+            <h2 style="color:#3fb950; margin:5px 0;">{profit:+.2f} €</h2>
+            <span style="color:#8b949e; font-size:0.85rem;">ROI : {roi_percent:+.1f}%</span>
+        </div>
+        """, unsafe_allow_html=True)
+    with kpi3:
+        st.markdown(f"""
+        <div class='kpi-container'>
+            <span style="color:#8b949e; font-size:0.9rem;">TAILLE D'UNITÉ (2.5%)</span>
+            <h2 style="color:#f0883e; margin:5px 0;">{unit_size:.2f} €</h2>
+            <span style="color:#8b949e; font-size:0.85rem;">Mise standard</span>
+        </div>
+        """, unsafe_allow_html=True)
+    with kpi4:
+        st.markdown(f"""
+        <div class='kpi-container'>
+            <span style="color:#8b949e; font-size:0.9rem;">OBJECTIF FINAL</span>
+            <h2 style="color:#2ea043; margin:5px 0;">1 000.00 €</h2>
+            <span style="color:#8b949e; font-size:0.85rem;">Progression : {progress_percent:.1f}%</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # Barre de progression visuelle intégrée
+    st.markdown("### 🎯 Progression vers l'Objectif 1000 €")
+    st.progress(progress_percent / 100.0)
+    st.caption(f"Il vous reste {(1000.0 - current_bankroll):.2f} € à générer pour valider le défi.")
+
+    st.markdown("---")
+
+    # Graphique d'évolution moderne
+    st.markdown("### 📊 Trajectoire Graphique de la Bankroll")
+    steps = [start_capital, current_bankroll]
+    dates = ["Départ (20 €)", "Aujourd'hui"]
+    df_bk = pd.DataFrame({"Étape": dates, "Capital": steps})
+    
+    fig = px.area(
+        df_bk, 
+        x="Étape", 
+        y="Capital", 
+        markers=True, 
+        template="plotly_dark"
+    )
+    fig.update_traces(line_color="#2ea043", line_width=3, marker_size=8, fillcolor="rgba(46, 160, 67, 0.15)")
+    fig.add_hline(y=1000, line_dash="dash", line_color="#58a6ff", annotation_text="Objectif : 1000 €", annotation_position="top left")
+    fig.update_layout(
+        xaxis_title="", 
+        yaxis_title="Montant (€)", 
+        yaxis_range=[0, max(current_bankroll + 100, 1100)],
+        margin=dict(l=20, r=20, t=30, b=20)
+    )
     st.plotly_chart(fig, use_container_width=True)
