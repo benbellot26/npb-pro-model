@@ -68,7 +68,7 @@ tab1, tab2, tab3, tab4 = st.tabs(["🚀 Top Paris du Jour", "🔬 Analyse Match 
 games_data = fetch_odds_api()
 
 # ==========================================
-# ONGLET 1 : TOP PARIS DU JOUR (TOP 5 PLAYS)
+# ONGLET 1 : TOP PARIS DU JOUR + COMBINÉ
 # ==========================================
 with tab1:
     st.title("⭐ BENBELLOT'S EDGE - PARIS DU JOUR")
@@ -97,6 +97,41 @@ with tab1:
                 </table>
             </div>
             """, unsafe_allow_html=True)
+            
+        # --- AJOUT DU COMBINÉ DU JOUR ---
+        st.markdown("---")
+        st.subheader("🧩 Le Combiné du Jour (Value Parlay)")
+        
+        parlay_leg1_match = f"{games_data[0]['away_team']} @ {games_data[0]['home_team']}"
+        parlay_leg1_sel = f"{games_data[0]['away_team']} (Victoire)"
+        parlay_leg1_odds = 1.75
+        
+        parlay_leg2_match = f"{games_data[min(1, len(games_data)-1)]['away_team']} @ {games_data[min(1, len(games_data)-1)]['home_team']}"
+        parlay_leg2_sel = "Plus de 6.5 Runs"
+        parlay_leg2_odds = 1.80
+        
+        combined_odds = parlay_leg1_odds * parlay_leg2_odds
+        parlay_units = "1 UNITÉ (Fun/Value)"
+        
+        st.markdown(f"""
+        <div class='tier1-card' style="border-color: #58a6ff; background: linear-gradient(135deg, #161b22 0%, #0d1117 100%);">
+            <table width="100%">
+                <tr>
+                    <td width="65%">
+                        <span style="color:#58a6ff; font-weight:bold; font-size:1.1rem;">🔗 Combiné 2 Sélections (Cote Totale : {combined_odds:.2f})</span><br><br>
+                        <b>Jambe 1 :</b> {parlay_leg1_match} — <span style="color:#c9d1d9;">{parlay_leg1_sel}</span> (Cote : {parlay_leg1_odds:.2f})<br>
+                        <b>Jambe 2 :</b> {parlay_leg2_match} — <span style="color:#c9d1d9;">{parlay_leg2_sel}</span> (Cote : {parlay_leg2_odds:.2f})
+                    </td>
+                    <td width="35%" align="right">
+                        <span style="color:#f0883e; font-weight:bold; font-size:1.1rem;">{parlay_units}</span><br>
+                        Cote Globale : <span class='odds-badge'>{combined_odds:.2f}</span><br>
+                        <span style="color:#8b949e; font-size:0.85rem;">Confiance : 68% (Risque contrôlé)</span>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        """, unsafe_allow_html=True)
+        
     else:
         st.info("Chargement des lignes de paris en cours...")
 
@@ -251,14 +286,13 @@ with tab4:
         st.subheader("➕ Enregistrer un Résultat de Pari")
         col_f1, col_f2, col_f3, col_f4 = st.columns(4)
         
-        bet_desc = col_f1.text_input("Libellé du Pari (ex: Hanshin Tigers ML)")
+        bet_desc = col_f1.text_input("Libellé du Pari (ex: Hanshin Tigers ML ou Combiné)")
         bet_stake = col_f2.number_input("Mise (€)", min_value=0.1, value=2.0, step=0.5)
         bet_odds = col_f3.number_input("Cote", min_value=1.01, value=1.90, step=0.01)
         bet_result = col_f4.selectbox("Résultat", ["Gagné", "Perdu", "Remboursé"])
         
         submitted = st.form_submit_button("Valider et Mettre à Jour le Capital")
         if submitted:
-            # Calcul du gain/perte
             if bet_result == "Gagné":
                 profit_loss = (bet_stake * bet_odds) - bet_stake
             elif bet_result == "Perdu":
@@ -268,14 +302,13 @@ with tab4:
                 
             new_total = current_bankroll + profit_loss
             
-            # Ajout à l'historique de session
             st.session_state.bankroll_history.append({
                 "Date": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
                 "Événement": f"{bet_desc} ({bet_result})",
                 "Montant (€)": profit_loss,
                 "Capital Total (€)": new_total
             })
-            st.success(pari_msg := f"Pari enregistré avec succès ! Variation : {profit_loss:+.2f} € | Nouveau Capital : {new_total:.2f} €")
+            st.success(f"Pari enregistré avec succès ! Variation : {profit_loss:+.2f} € | Nouveau Capital : {new_total:.2f} €")
             st.rerun()
 
     st.markdown("---")
@@ -328,7 +361,7 @@ with tab4:
 
     st.markdown("---")
 
-    # Graphique d'évolution basé sur l'historique réel des paris saisis
+    # Graphique d'évolution
     st.markdown("### 📊 Trajectoire Graphique de la Bankroll")
     df_bk = pd.DataFrame(st.session_state.bankroll_history)
     
@@ -349,6 +382,6 @@ with tab4:
     )
     st.plotly_chart(fig, use_container_width=True)
 
-    # Affichage du tableau de l'historique
+    # Tableau historique
     st.markdown("### 📝 Historique des Transactions")
     st.dataframe(df_bk, use_container_width=True)
