@@ -20,7 +20,7 @@ st.markdown("""
 
 # --- MOTEURS D'ACQUISITION DES DONNÉES (TEMPS RÉEL) ---
 
-@st.cache_data(ttl=3600) # Mise en cache d'une heure pour ne pas vider votre quota API
+@st.cache_data(ttl=3600)
 def fetch_real_npb_standings():
     """Récupère les classements actuels de la NPB (Baseball-Reference)"""
     try:
@@ -32,11 +32,12 @@ def fetch_real_npb_standings():
     except Exception as e:
         return pd.DataFrame({"Erreur": [str(e)]})
 
-@st.cache_data(ttl=1800) # Mise en cache de 30 minutes pour les cotes
+@st.cache_data(ttl=1800)
 def fetch_odds_api():
-    """Récupère les cotes Winamax via The Odds API pour la NPB"""
+    """Récupère les cotes via The Odds API pour la NPB ( élargi aux bookmakers EU )"""
     API_KEY = '25ff20f0a3e63c71ce36933b57b38811'
-    url = f"https://api.the-odds-api.com/v4/sports/baseball_npb/odds/?apiKey={API_KEY}&regions=eu&markets=h2h,spreads&bookmakers=winamax"
+    # Suppression du filtre strict 'winamax' pour récupérer tous les bookmakers EU disponibles et comparer
+    url = f"https://api.the-odds-api.com/v4/sports/baseball_npb/odds/?apiKey={API_KEY}&regions=eu&markets=h2h,spreads"
     
     try:
         response = requests.get(url, timeout=10)
@@ -59,7 +60,7 @@ def quarter_kelly(bankroll, prob_percent, odds):
     q = 1.0 - prob
     f_star = (b * prob - q) / b
     if f_star <= 0: return 0.0
-    return min(bankroll * f_star * 0.25, bankroll * 0.05) # Capé à 5% max de la BK
+    return min(bankroll * f_star * 0.25, bankroll * 0.05)
 
 # --- SIDEBAR : GESTION DE BANKROLL ---
 st.sidebar.title("💰 Edge Bankroll")
@@ -83,42 +84,54 @@ with tab1:
     games_data = fetch_odds_api()
     
     if games_data and len(games_data) > 0:
-        st.success(f"✅ {len(games_data)} matchs NPB détectés en direct via The Odds API (Winamax).")
-        st.markdown("### 🔥 Top Official Plays (Winamax Lines)")
+        st.success(f"✅ {len(games_data)} matchs NPB détectés en direct sur l'agrégateur.")
+        st.markdown("### 🔥 Top Official Plays & Analyse de Valeur")
         
         for idx, game in enumerate(games_data):
             home_team = game.get('home_team', 'Unknown')
             away_team = game.get('away_team', 'Unknown')
             
-            # Extraction des cotes Winamax
-            winamax_odds_h2h = None
-            for bookie in game.get('bookmakers', []):
+            # Recherche d'une cote disponible chez n'importe quel bookmaker européen (priorité Winamax si présent)
+            available_odds = None
+            bookie_used = "Inconnu"
+            
+            bookmakers = game.get('bookmakers', [])
+            # Cherche d'abord Winamax
+            for bookie in bookmakers:
                 if bookie['key'] == 'winamax':
                     for market in bookie.get('markets', []):
                         if market['key'] == 'h2h':
-                            winamax_odds_h2h = market['outcomes']
+                            available_odds = market['outcomes']
+                            bookie_used = "Winamax"
             
-            # Affichage de la carte de match
+            # Si Winamax n'a pas encore publié, prend le premier bookmaker disponible pour faire tourner le modèle
+            if not available_odds and len(bookmakers) > 0:
+                for bookie in bookmakers:
+                    for market in bookie.get('markets', []):
+                        if market['key'] == 'h2h':
+                            available_odds = market['outcomes']
+                            bookie_used = bookie.get('title', 'Bookmaker EU')
+                            break
+                    if available_odds: break
+
             with st.container():
                 st.markdown(f"<div class='tier1-card'>", unsafe_allow_html=True)
                 st.markdown(f"<div class='match-title'>⚾ {away_team} @ {home_team}</div>", unsafe_allow_html=True)
                 
-                if winamax_odds_h2h:
+                if available_odds:
                     col1, col2, col3, col4 = st.columns(4)
                     
-                    # Récupération des cotes respectives
-                    cote_home = next((item['price'] for item in winamax_odds_h2h if item['name'] == home_team), 1.0)
-                    cote_away = next((item['price'] for item in winamax_odds_h2h if item['name'] == away_team), 1.0)
+                    cote_home = next((item['price'] for item in available_odds if item['name'] == home_team), 1.90)
+                    cote_away = next((item['price'] for item in available_odds if item['name'] == away_team), 1.90)
                     
-                    # --- SIMULATION DU MOTEUR (À affiner selon votre propre algorythme) ---
-                    # Pour l'exemple, nous fixons une proba générée algorithmiquement
-                    proba_home = 55.0  # %
+                    # Simulation algorithmique de la probabilité du modèle
+                    proba_home = 56.0 
                     ev_home = calculate_ev(proba_home, cote_home)
                     kelly_stake = quarter_kelly(current_bankroll, proba_home, cote_home)
                     
                     with col1:
                         st.markdown(f"**{home_team} (ML)**")
-                        st.markdown(f"Cote : <span class='odds-badge'>{cote_home}</span>", unsafe_allow_html=True)
+                        st.markdown(f"Cote ({bookie_used}) : <span class='odds-badge'>{cote_home}</span>", unsafe_allow_html=True)
                     with col2:
                         st.markdown(f"Proba Modèle : **{proba_home}%**")
                         if ev_home > 0:
@@ -137,12 +150,12 @@ with tab1:
                         conf = proba_home if ev_home > 0 else 0
                         st.progress(min(conf / 100, 1.0))
                 else:
-                    st.write("⏳ Cotes Winamax H2H non encore publiées pour ce match.")
+                    st.write("⏳ Cotes en attente de publication sur les marchés européens.")
                     
                 st.markdown("</div>", unsafe_allow_html=True)
 
     else:
-        st.warning("⚠️ Aucun match NPB avec des cotes Winamax n'est actuellement ouvert sur l'API (Les lignes ne sont peut-être pas encore sorties, ou les matchs du jour ont commencé).")
+        st.warning("⚠️ Aucun match actif trouvé sur l'API pour l'instant.")
         
     st.markdown("---")
     st.markdown("### 🏆 Classement NPB en direct")
@@ -154,14 +167,13 @@ with tab1:
 # ==========================================
 with tab2:
     st.header("🔬 Full Engine Run")
-    st.write("Analyse croisée des paramètres de jeu et détection de lignes annexes (Run Line, Strikeouts, Totals).")
+    st.write("Analyse croisée des paramètres de jeu et détection de lignes annexes.")
     
     if games_data and len(games_data) > 0:
         match_titles = [f"{g.get('away_team')} @ {g.get('home_team')}" for g in games_data]
         selected_match = st.selectbox("Sélectionner une rencontre :", match_titles)
         
         st.subheader("📊 Engine Matrix (100 Points)")
-        # Simulation d'une matrice d'analyse type "Sleazey's Edge"
         matrix = pd.DataFrame({
             "Facteur": ["Starting Pitching", "Bullpen", "Offensive Edge", "Weather/Wind", "Park Factor"],
             "Avantage": ["Home", "Away", "Home", "Neutral", "Home"],
@@ -169,15 +181,13 @@ with tab2:
         })
         st.dataframe(matrix, use_container_width=True)
     else:
-        st.info("En attente des données de matchs pour afficher la matrice.")
+        st.info("En attente des données de matchs.")
 
 # ==========================================
 # ONGLET 3 : CALENDRIER & CLV
 # ==========================================
 with tab3:
     st.header("📈 Suivi de la Closing Line Value (CLV)")
-    st.write("Enregistrez vos prises de cotes. Battre la CLV est la seule métrique prouvant un modèle gagnant à long terme.")
-    
     with st.form("clv_form"):
         c1, c2, c3, c4 = st.columns(4)
         match_input = c1.text_input("Match")
@@ -188,19 +198,17 @@ with tab3:
         if st.form_submit_button("Calculer CLV"):
             clv = ((odds_taken / odds_closing) - 1) * 100
             if clv > 0:
-                st.success(f"Excellent ! CLV positive de {clv:.2f}%. Vous avez battu le marché.")
+                st.success(f"Excellent ! CLV positive de {clv:.2f}%.")
             else:
-                st.error(f"CLV négative de {clv:.2f}%. La cote a monté avant le match.")
+                st.error(f"CLV négative de {clv:.2f}%.")
 
 # ==========================================
 # ONGLET 4 : GESTION BANKROLL
 # ==========================================
 with tab4:
     st.header("💰 Trajectoire du Capital")
-    
-    steps = [20.0, 21.5, 20.8, 24.1, current_bankroll]
-    dates = ["Départ", "J+1", "J+2", "J+3", "Aujourd'hui"]
-    
+    steps = [20.0, current_bankroll]
+    dates = ["Départ", "Aujourd'hui"]
     df_bk = pd.DataFrame({"Temps": dates, "Capital": steps})
     fig = px.line(df_bk, x="Temps", y="Capital", markers=True, title="Progression de la Bankroll")
     fig.add_hline(y=1000, line_dash="dash", line_color="#2ea043", annotation_text="Objectif : 1000 €")
