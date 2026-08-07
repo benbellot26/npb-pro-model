@@ -16,6 +16,7 @@ st.markdown("""
         .odds-badge { background-color: #21262d; border: 1px solid #30363d; color: #58a6ff; padding: 4px 10px; border-radius: 6px; font-weight: bold; }
         .deep-header { background: linear-gradient(135deg, #161b22 0%, #0d1117 100%); border: 2px solid #30363d; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
         .card-box { background-color: #161b22; border: 1px solid #30363d; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+        .schedule-card { background-color: #161b22; border: 1px solid #30363d; border-left: 5px solid #58a6ff; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -227,34 +228,51 @@ with tab2:
         st.info("En attente des données de matchs pour afficher l'analyse.")
 
 # ==========================================
-# ONGLET 3 : CALENDRIER DES MATCHS À VENIR
+# ONGLET 3 : CALENDRIER DES MATCHS (DESIGN CARTES)
 # ==========================================
 with tab3:
-    st.header("📅 Calendrier des Matchs NPB (Prochaines Rencontres)")
-    st.write("Retrouvez ci-dessous la liste planifiée des matchs à venir extraite en direct des flux officiels.")
-    
+    st.header("📅 Calendrier & Planning des Matchs NPB")
+    st.markdown("Aperçu visuel des affiches programmées. Préparez vos analyses et repérez les affiches clés de la semaine.")
+    st.markdown("---")
+
     if games_data and len(games_data) > 0:
-        schedule_list = []
-        for game in games_data:
-            commence_time = game.get('commence_time', 'Date non spécifiée')
-            # Formatage propre de la date si possible
+        for idx, game in enumerate(games_data):
+            away_team = game.get('away_team', 'Équipe Extérieure')
+            home_team = game.get('home_team', 'Équipe Domicile')
+            commence_time = game.get('commence_time', '')
+            
+            # Formatage de la date/heure
             try:
                 dt_obj = datetime.datetime.fromisoformat(commence_time.replace('Z', '+00:00'))
-                formatted_date = dt_obj.strftime("%A %d %B %Y à %H:%M (UTC)")
+                date_str = dt_obj.strftime("%A %d %B %Y")
+                time_str = dt_obj.strftime("%H:%M UTC")
             except:
-                formatted_date = commence_time
+                date_str = "Date à confirmer"
+                time_str = commence_time
 
-            schedule_list.append({
-                "Date / Horaire": formatted_date,
-                "Équipe Extérieure (Away)": game.get('away_team'),
-                "Équipe Domicile (Home)": game.get('home_team'),
-                "Statut": "Programmé ⚾"
-            })
-        
-        df_schedule = pd.DataFrame(schedule_list)
-        st.dataframe(df_schedule, use_container_width=True)
+            # Affichage sous forme de carte moderne
+            st.markdown(f"""
+            <div class='schedule-card'>
+                <table width="100%">
+                    <tr>
+                        <td width="30%">
+                            <span style="color:#8b949e; font-size:0.9rem;">🗓️ {date_str}</span><br>
+                            <span style="color:#58a6ff; font-weight:bold; font-size:1.05rem;">⏰ {time_str}</span>
+                        </td>
+                        <td width="50%" style="font-size:1.1rem;">
+                            ✈️ <b>{away_team}</b><br>
+                            🏠 <b>{home_team}</b>
+                        </td>
+                        <td width="20%" align="right">
+                            <span class="odds-badge">NPB SÉRIE</span><br>
+                            <span style="color:#3fb950; font-size:0.85rem; font-weight:bold;">● Programmé</span>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            """, unsafe_allow_html=True)
     else:
-        st.warning("Aucun calendrier de match disponible pour le moment sur l'API.")
+        st.warning("Aucun match planifié n'a pu être récupéré pour le moment.")
 
 # ==========================================
 # ONGLET 4 : GESTION BANKROLL
