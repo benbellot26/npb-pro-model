@@ -79,7 +79,7 @@ tab1, tab2, tab3, tab4 = st.tabs(["🚀 Top Paris du Jour", "🔬 Analyse Match 
 # ONGLET 1 : TOP PARIS DU JOUR
 # ==========================================
 with tab1:
-    st.title("⭐ Sleazey's Edge - Daily Picks")
+    st.title("⭐ Benbellot - Daily Picks")
     
     games_data = fetch_odds_api()
     
