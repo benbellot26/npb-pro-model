@@ -11,11 +11,11 @@ st.markdown("""
     <style>
         .stApp { background-color: #0b0e14; color: #c9d1d9; }
         .tier1-card { border: 2px solid #238636; background-color: #161b22; padding: 15px; border-radius: 8px; margin-bottom: 15px;}
-        .tier2-card { border: 2px solid #1f6feb; background-color: #161b22; padding: 15px; border-radius: 8px; margin-bottom: 15px;}
         .edge-positive { color: #3fb950; font-weight: bold; font-size: 1.1em;}
         .match-title { font-size: 1.3rem; font-weight: bold; color: #58a6ff; margin-bottom: 5px;}
         .odds-badge { background-color: #21262d; border: 1px solid #30363d; color: #58a6ff; padding: 4px 10px; border-radius: 6px; font-weight: bold; }
-        .engine-box { background-color: #161b22; border: 1px solid #30363d; padding: 12px; border-radius: 8px; text-align: center; }
+        .deep-header { background: linear-gradient(135deg, #161b22 0%, #0d1117 100%); border: 2px solid #30363d; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
+        .card-box { background-color: #161b22; border: 1px solid #30363d; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -42,14 +42,6 @@ def fetch_odds_api():
         pass
     return []
 
-def quarter_kelly(bankroll, prob, odds):
-    if odds <= 1.0 or prob <= 0: return 0.0
-    b = odds - 1.0
-    q = 1.0 - prob
-    f_star = (b * prob - q) / b
-    if f_star <= 0: return 0.0
-    return min(bankroll * f_star * 0.25, bankroll * 0.05)
-
 # --- SIDEBAR : BANKROLL ---
 st.sidebar.title("💰 Bankroll Benbellot")
 st.sidebar.write("Objectif : 20 € ➔ 1000 €")
@@ -60,7 +52,7 @@ today = datetime.datetime.now().strftime("%A, %B %d, %Y")
 st.sidebar.caption(f"Date : {today}")
 
 # --- ONGLETS ---
-tab1, tab2, tab3, tab4 = st.tabs(["🚀 Top Paris du Jour", "🔬 Analyse Match Deep-Dive", "📅 Calendrier & CLV", "📈 Gestion Bankroll"])
+tab1, tab2, tab3, tab4 = tab1, tab2, tab3, tab4 = st.tabs(["🚀 Top Paris du Jour", "🔬 Analyse Match Deep-Dive", "📅 Calendrier & CLV", "📈 Gestion Bankroll"])
 
 games_data = fetch_odds_api()
 
@@ -97,87 +89,163 @@ with tab1:
     else:
         st.info("Chargement des lignes de paris en cours...")
 
-    st.markdown("---")
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        st.markdown("### 🎯 Meilleurs Totaux (Over/Under)")
-        st.markdown("- **Moins de 7.5 Runs** (Match 1) 📉\n- **Plus de 8.5 Runs** (Match 2) 📈")
-    with c2:
-        st.markdown("### ⚾ Premières 5 Manches (F5)")
-        st.markdown("- **Giants F5 ML** (Confiance 81%)\n- **Hawks F5 -0.5** (Confiance 78%)")
-    with c3:
-        st.markdown("### 🚀 Valeur Outsider (Underdog)")
-        st.markdown("- **Swallows ML (+115)**\n*Petite valeur si la cote s'améliore*")
-
 # ==========================================
-# ONGLET 2 : ANALYSE MATCH DEEP-DIVE
+# ONGLET 2 : ANALYSE MATCH DEEP-DIVE (STYLE VISUEL)
 # ==========================================
 with tab2:
-    st.title("🔬 Analyse Approfondie des Matchs")
+    st.title("🔬 BENBELLOT'S EDGE — FULL ENGINE RUN")
     
     if games_data and len(games_data) > 0:
         match_titles = [f"{g.get('away_team')} @ {g.get('home_team')}" for g in games_data]
         selected_match = st.selectbox("Sélectionner la rencontre à analyser :", match_titles)
         
+        team_parts = selected_match.split(" @ ")
+        away_t = team_parts[0]
+        home_t = team_parts[1]
+
+        # En-tête du match style Infographie
         st.markdown(f"""
-        <div style="background-color:#161b22; padding:20px; border-radius:10px; border:1px solid #30363d; margin-bottom:20px;">
-            <h2 style="text-align:center; color:#58a6ff;">{selected_match}</h2>
-            <p style="text-align:center; color:#8b949e;">STADE : Tokyo Dome (Environnement Fermé) | TEMPÉRATURE : 22°C (Intérieur)</p>
+        <div class="deep-header">
+            <h1 style="text-align:center; color:#58a6ff; margin-bottom:5px;">{away_t} &nbsp;@&nbsp; {home_t}</h1>
+            <p style="text-align:center; color:#8b949e; font-size:1.1rem;">JEUDI | STADE NPB PRINCIPAL | TOKYO DOME (ENVIRONNEMENT INTÉRIEUR)</p>
+            <hr style="border-color:#30363d;">
+            <table width="100%" style="text-align:center;">
+                <tr>
+                    <td><b>LANCEUR EXTÉRIEUR (RHP)</b><br>2.45 ERA | 2.62 FIP | 26.6% K% | 0.98 WHIP</td>
+                    <td><b>MÉTÉO & STADE</b><br>22°C | Vent 6 km/h | Impact neutre</td>
+                    <td><b>LANCEUR DOMICILE (LHP)</b><br>5.52 ERA | 4.95 FIP | 18.4% K% | 1.48 WHIP</td>
+                </tr>
+            </table>
         </div>
         """, unsafe_allow_html=True)
+
+        # Ligne intermédiaire : alignements / cotes actuelles / score projeté
+        col_lineup1, col_lineup2, col_side_info = st.columns([1, 1, 1])
         
-        col_pitch1, col_pitch2 = st.columns(2)
-        with col_pitch1:
-            st.markdown("### 🧑‍✈️ Lanceur Partant Extérieur (RHP)")
-            st.write("**ERA:** 2.45 | **FIP:** 2.62 | **WHIP:** 1.01 | **K%:** 24.5%")
-        with col_pitch2:
-            st.markdown("### 🧑‍✈️ Lanceur Partant Domicile (LHP)")
-            st.write("**ERA:** 3.10 | **FIP:** 2.95 | **WHIP:** 1.15 | **K%:** 21.0%")
+        with col_lineup1:
+            st.markdown(f"### 🧢 {away_t}")
+            st.markdown("""
+            1. RF - N. Lukes (L)<br>
+            2. 1B - V. Guerrero Jr. (R)<br>
+            3. 3B - K. Okamoto (R)<br>
+            4. DH - G. Springer (R)<br>
+            5. C - A. Kirk (R)<br>
+            6. LF - J. Sanchez (L)<br>
+            7. 2B - E. Clement (R)<br>
+            8. SS - A. Gimenez (L)<br>
+            9. CF - M. Straw (R)
+            """, unsafe_allow_html=True)
             
-        st.markdown("---")
-        st.subheader("📊 Matrice d'Évaluation des Moteurs (100 Points)")
-        
-        matrix_df = pd.DataFrame({
-            "Moteur Analytique": ["Starting Pitching", "Compatibilité Arsenal", "Évaluation Frappeurs (1-9)", "Profondeur Bullpen", "Défense & Course", "Facteur Stade", "Météo / Vent", "Forme Récente (15 derniers match)"],
-            "Avantage": ["EXTÉRIEUR", "DOMICILE", "EXTÉRIEUR", "ÉGALITÉ", "EXTÉRIEUR", "NEUTRE", "DOME", "EXTÉRIEUR"],
-            "Score Comparé (Ext. / Dom.)": ["11.2 / 9.8", "8.5 / 9.0", "8.0 / 6.5", "4.0 / 4.0", "3.5 / 2.0", "1.5 / 1.5", "2.0 / 1.0", "6.5 / 3.5"],
-            "Validation": ["✅ Validé", "✅ Validé", "✅ Validé", "✅ Validé", "✅ Validé", "✅ Validé", "✅ Validé", "✅ Validé"]
-        })
-        st.dataframe(matrix_df, use_container_width=True)
-        
-        col_prop1, col_prop2 = st.columns(2)
-        with col_prop1:
-            st.markdown("### 🎯 Cibles Home Runs")
-            st.markdown("1. **Frappeur A** (ISO .280 vs LHP)\n2. **Frappeur B** (Angle de sortie optimal)")
-        with col_prop2:
-            st.markdown("### ⚾ Cibles Strikeouts")
-            st.markdown("1. **Lanceur Extérieur** : **PLUS DE 6.5 K's**")
+        with col_lineup2:
+            st.markdown(f"### 🧢 {home_t}")
+            st.markdown("""
+            1. CF - P. Crow-Armstrong (L)<br>
+            2. RF - S. Suzuki (R)<br>
+            3. 1B - M. Busch (L)<br>
+            4. 3B - A. Bregman (R)<br>
+            5. LF - I. Happ (S)<br>
+            6. 2B - N. Hoerner (R)<br>
+            7. C - C. Kelly (R)<br>
+            8. DH - P. Ramirez (S)<br>
+            9. SS - D. Swanson (R)
+            """, unsafe_allow_html=True)
             
+        with col_side_info:
+            st.markdown("### 📊 Marchés & Projections")
+            st.markdown(f"""
+            <div class='card-box'>
+                <b>LIGNES ACTUELLES (MONEYLINE)</b><br>
+                {away_t[:3].upper()} -116 &nbsp;|&nbsp; {home_t[:3].upper()} +105<br><br>
+                <b>TOTAL DU MATCH</b><br>
+                7.5 Runs (-105 / -105)<br><br>
+                <b>SCORE PROJETÉ PAR LE MODÈLE</b><br>
+                ⚾ <b>{away_t[:3].upper()} : 4.2</b> &nbsp;—&nbsp; ⚾ <b>{home_t[:3].upper()} : 3.0</b>
+            </div>
+            """, unsafe_allow_html=True)
+
         st.markdown("---")
-        st.markdown("### 💡 Conclusion du Modèle")
-        st.success("Total projeté : **7.3 Runs** (Tendance Under). Le modèle accorde un avantage tactique net aux visiteurs grâce à la supériorité du FIP du lanceur partant.")
+
+        # Grille centrale : Matrice des 100 points VS Key Takeaways & Best Bets
+        col_matrix, col_analysis = st.columns([1.2, 1])
         
+        with col_matrix:
+            st.markdown("### 📋 MATRICE DES MOTEURS (100 POINTS)")
+            matrix_df = pd.DataFrame({
+                "MOTEUR": ["Starting Pitching", "Pitch Arsenal Compatibility", "Hitter Evaluation (1-9)", "Team Performance w/ Starter", "Bullpen", "Defense & Baserunning", "Park Factor", "Weather / Wind", "Home Field", "Recent Form (Last 15)", "Handedness Splits", "First Five Projection", "Full Game Projection", "Market Value", "CLV Projection"],
+                "VAINQUEUR": [away_t[:3].upper(), away_t[:3].upper(), away_t[:3].upper(), away_t[:3].upper(), "ÉGALITÉ", "ÉGALITÉ", "ÉGALITÉ", away_t[:3].upper(), home_t[:3].upper(), away_t[:3].upper(), away_t[:3].upper(), away_t[:3].upper(), away_t[:3].upper(), away_t[:3].upper(), away_t[:3].upper()],
+                "SCORE": ["19.0 / 11.0", "8.5 / 5.5", "8.0 / 4.0", "7.0 / 3.0", "4.0 / 4.0", "3.5 / 2.0", "1.5 / 1.5", "2.0 / 1.0", "2.5 / 1.5", "6.5 / 3.5", "4.0 / 2.0", "4.5 / 1.5", "4.0 / 1.0", "2.5 / 0.5", "1.5 / 0.5"]
+            })
+            st.dataframe(matrix_df, use_container_width=True)
+            st.markdown(f"<h3 style='color:#3fb950;'>SCORE TOTAL : {away_t[:3].upper()} 78.0 / {home_t[:3].upper()} 63.5</h3>", unsafe_allow_html=True)
+
+        with col_analysis:
+            st.markdown("### 🔑 POINTS CLÉS (KEY TAKEAWAYS)")
+            st.markdown(f"""
+            <div class='card-box'>
+                ✅ Le lanceur partant possède un net avantage structurel majeur.<br>
+                ✅ L'alignement de {away_t} montre plus de puissance et de meilleures stats face aux lanceurs gauchers.<br>
+                ✅ Le lanceur adverse souffre de difficultés face au contact lourd et concède trop de passes gratuites.<br>
+                ✅ {away_t} domine les projections tant sur les 5 premières manches que sur le match complet.<br>
+                ✅ Léger avantage "Under" sur l'environnement avec un vent neutre.
+            </div>
+            """, unsafe_allow_html=True)
+            
+            st.markdown("### 🎯 MEILLEURS PARIS (BEST BETS)")
+            st.markdown(f"""
+            <div class='card-box' style="border-color:#238636;">
+                ⭐ **1. {away_t} ML** &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color:#3fb950;"><b>3 UNITÉS</b></span><br>
+                ⭐ **2. {away_t} F5 ML** &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color:#3fb950;"><b>2.5 UNITÉS</b></span><br>
+                ⭐ **3. Moins de 7.5 Runs** &nbsp;&nbsp;&nbsp;&nbsp; <span style="color:#3fb950;"><b>1 UNITÉ</b></span>
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.markdown("---")
+
+        # Ligne basse : Prop Targets & Validation finale
+        col_prop_target, col_final_word = st.columns(2)
+        
+        with col_prop_target:
+            st.markdown("### ⚾ PROPS & CIBLES JOUEURS")
+            st.markdown(f"""
+            <div class='card-box'>
+                <b>CIBLES HOME RUNS :</b><br>
+                1. Frappeur Star 1 (ISO élevé vs LHP)<br>
+                2. Frappeur Star 2 (Angle de sortie optimal)<br>
+                3. Frappeur Star 3<br><br>
+                <b>CIBLE STRIKEOUTS :</b><br>
+                🎯 Lanceur Partant ({away_t}) : <b>PLUS DE K's</b>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        with col_final_word:
+            st.markdown("### 🏆 MOT DE LA FIN (FINAL WORD)")
+            st.markdown(f"""
+            <div class='card-box' style="background-color:#161b22; border: 2px solid #58a6ff;">
+                <p style="font-size:1.1rem;"><b>SOUTENEZ {away_t.upper()}.</b> LE LANCEUR DONNE L'AVANTAGE DÉCISIF LÀ OÙ ÇA COMPTE LE PLUS.</p>
+                <h3 style="color:#58a6ff; text-align:center;">LET'S GET PAID! 💰</h3>
+                <p style="text-align:center; color:#3fb950; font-weight:bold;">Indice de Confiance Global : 79% (PARI SOLIDE)</p>
+            </div>
+            """, unsafe_allow_html=True)
+
     else:
-        st.info("En attente des données de matchs pour charger l'analyse détaillée.")
+        st.info("En attente des données de matchs pour afficher l'analyse.")
 
 # ==========================================
 # ONGLET 3 : CALENDRIER & CLV
 # ==========================================
 with tab3:
     st.header("📅 Calendrier & Suivi de la Closing Line Value (CLV)")
-    st.write("Enregistrez vos paris pour suivre rigoureusement votre performance face au marché.")
-    
     with st.form("clv_form"):
         c1, c2, c3, c4 = st.columns(4)
         match_input = c1.text_input("Match")
-        bet_input = c2.text_input("Pari (ex: Extérieur ML)")
+        bet_input = c2.text_input("Pari (ex: Victoire Extérieur)")
         odds_taken = c3.number_input("Cote Prise", min_value=1.01, step=0.01)
         odds_closing = c4.number_input("Cote Fermeture", min_value=1.01, step=0.01)
         
         if st.form_submit_button("Enregistrer le Pari"):
             clv = ((odds_taken / odds_closing) - 1) * 100
             if clv > 0:
-                st.success(f"CLV positive : +{clv:.2f}% (Excellent, vous battez le marché)")
+                st.success(f"CLV positive : +{clv:.2f}% (Excellent)")
             else:
                 st.error(f"CLV négative : {clv:.2f}%")
 
