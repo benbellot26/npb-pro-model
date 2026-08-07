@@ -33,16 +33,23 @@ def fetch_real_npb_standings():
     except Exception as e:
         return pd.DataFrame({"Erreur": [f"Impossible de récupérer les données en direct : {e}"]})
 
-@st.cache_data(ttl=600)
-def fetch_winamax_api():
-    """Tente d'interroger l'API publique Winamax pour les matchs de Baseball."""
+@st.cache_data(ttl=3600)  # On met en cache 1h pour économiser vos crédits API gratuits
+def fetch_odds_api():
+    """Récupère les cotes via The Odds API (Agrégateur Légal)"""
+    # Remplacez par votre vraie clé API reçue par mail
+    API_KEY = '25ff20f0a3e63c71ce36933b57b38811'
+    
+    # sport : 'baseball_npb' (Ligue Japonaise)
+    # regions : 'eu' (pour avoir les bookmakers européens)
+    # markets : 'h2h,spreads' (Moneyline et Run Line)
+    url = f"https://api.the-odds-api.com/v4/sports/baseball_npb/odds/?apiKey={API_KEY}&regions=eu&markets=h2h,spreads&bookmakers=winamax,unibet_eu"
+    
     try:
-        # Point d'entrée public Winamax. Le sportId pour le baseball est généralement 3 ou 20.
-        headers = {'User-Agent': 'Mozilla/5.0'}
-        response = requests.get("https://www.winamax.fr/api/betting/matches?sportId=20", headers=headers, timeout=5)
+        response = requests.get(url, timeout=10)
         if response.status_code == 200:
             return response.json()
-        return None
+        else:
+            return None
     except:
         return None
 
