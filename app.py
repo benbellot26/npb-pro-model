@@ -21,6 +21,12 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# --- INITIALISATION DE LA MÉMOIRE DE LA BANKROLL ---
+if 'bankroll_history' not in st.session_state:
+    st.session_state.bankroll_history = [
+        {"Date": "Départ", "Événement": "Capital Initial", "Montant (€)": 20.0, "Capital Total (€)": 20.0}
+    ]
+
 # --- MOTEURS D'ACQUISITION DES DONNÉES ---
 @st.cache_data(ttl=3600)
 def fetch_real_npb_standings():
@@ -44,13 +50,16 @@ def fetch_odds_api():
         pass
     return []
 
-# --- SIDEBAR : BANKROLL ---
+# Calcul du capital actuel dynamique basé sur l'historique de session
+current_bankroll = st.session_state.bankroll_history[-1]["Capital Total (€)"]
+unit_size = current_bankroll * 0.025
+today = datetime.datetime.now().strftime("%A, %B %d, %Y")
+
+# --- SIDEBAR ---
 st.sidebar.title("💰 Bankroll Benbellot")
 st.sidebar.write("Objectif : 20 € ➔ 1000 €")
-current_bankroll = st.sidebar.number_input("Capital Actuel (€)", value=20.0, step=0.5)
-unit_size = current_bankroll * 0.025
+st.sidebar.metric("Capital Actuel", f"{current_bankroll:.2f} €")
 st.sidebar.info(f"1 Unité (2.5%) = **{unit_size:.2f} €**")
-today = datetime.datetime.now().strftime("%A, %B %d, %Y")
 st.sidebar.caption(f"Date : {today}")
 
 # --- ONGLETS ---
@@ -92,7 +101,7 @@ with tab1:
         st.info("Chargement des lignes de paris en cours...")
 
 # ==========================================
-# ONGLET 2 : ANALYSE MATCH DEEP-DIVE (STYLE VISUEL)
+# ONGLET 2 : ANALYSE MATCH DEEP-DIVE
 # ==========================================
 with tab2:
     st.title("🔬 BENBELLOT'S EDGE — FULL ENGINE RUN")
@@ -125,41 +134,26 @@ with tab2:
         with col_lineup1:
             st.markdown(f"### 🧢 {away_t}")
             st.markdown("""
-            1. RF - N. Lukes (L)<br>
-            2. 1B - V. Guerrero Jr. (R)<br>
-            3. 3B - K. Okamoto (R)<br>
-            4. DH - G. Springer (R)<br>
-            5. C - A. Kirk (R)<br>
-            6. LF - J. Sanchez (L)<br>
-            7. 2B - E. Clement (R)<br>
-            8. SS - A. Gimenez (L)<br>
-            9. CF - M. Straw (R)
+            1. RF - N. Lukes (L)<br>2. 1B - V. Guerrero Jr. (R)<br>3. 3B - K. Okamoto (R)<br>
+            4. DH - G. Springer (R)<br>5. C - A. Kirk (R)<br>6. LF - J. Sanchez (L)<br>
+            7. 2B - E. Clement (R)<br>8. SS - A. Gimenez (L)<br>9. CF - M. Straw (R)
             """, unsafe_allow_html=True)
             
         with col_lineup2:
             st.markdown(f"### 🧢 {home_t}")
             st.markdown("""
-            1. CF - P. Crow-Armstrong (L)<br>
-            2. RF - S. Suzuki (R)<br>
-            3. 1B - M. Busch (L)<br>
-            4. 3B - A. Bregman (R)<br>
-            5. LF - I. Happ (S)<br>
-            6. 2B - N. Hoerner (R)<br>
-            7. C - C. Kelly (R)<br>
-            8. DH - P. Ramirez (S)<br>
-            9. SS - D. Swanson (R)
+            1. CF - P. Crow-Armstrong (L)<br>2. RF - S. Suzuki (R)<br>3. 1B - M. Busch (L)<br>
+            4. 3B - A. Bregman (R)<br>5. LF - I. Happ (S)<br>6. 2B - N. Hoerner (R)<br>
+            7. C - C. Kelly (R)<br>8. DH - P. Ramirez (S)<br>9. SS - D. Swanson (R)
             """, unsafe_allow_html=True)
             
         with col_side_info:
             st.markdown("### 📊 Marchés & Projections")
             st.markdown(f"""
             <div class='card-box'>
-                <b>LIGNES ACTUELLES (MONEYLINE)</b><br>
-                {away_t[:3].upper()} -116 &nbsp;|&nbsp; {home_t[:3].upper()} +105<br><br>
-                <b>TOTAL DU MATCH</b><br>
-                7.5 Runs (-105 / -105)<br><br>
-                <b>SCORE PROJETÉ PAR LE MODÈLE</b><br>
-                ⚾ <b>{away_t[:3].upper()} : 4.2</b> &nbsp;—&nbsp; ⚾ <b>{home_t[:3].upper()} : 3.0</b>
+                <b>LIGNES ACTUELLES (MONEYLINE)</b><br>{away_t[:3].upper()} -116 &nbsp;|&nbsp; {home_t[:3].upper()} +105<br><br>
+                <b>TOTAL DU MATCH</b><br>7.5 Runs (-105 / -105)<br><br>
+                <b>SCORE PROJETÉ PAR LE MODÈLE</b><br>⚾ <b>{away_t[:3].upper()} : 4.2</b> &nbsp;—&nbsp; ⚾ <b>{home_t[:3].upper()} : 3.0</b>
             </div>
             """, unsafe_allow_html=True)
 
@@ -184,8 +178,7 @@ with tab2:
                 ✅ Le lanceur partant possède un net avantage structurel majeur.<br>
                 ✅ L'alignement de {away_t} montre plus de puissance et de meilleures stats face aux lanceurs gauchers.<br>
                 ✅ Le lanceur adverse souffre de difficultés face au contact lourd et concède trop de passes gratuites.<br>
-                ✅ {away_t} domine les projections tant sur les 5 premières manches que sur le match complet.<br>
-                ✅ Léger avantage "Under" sur l'environnement avec un vent neutre.
+                ✅ {away_t} domine les projections tant sur les 5 premières manches que sur le match complet.
             </div>
             """, unsafe_allow_html=True)
             
@@ -198,38 +191,11 @@ with tab2:
             </div>
             """, unsafe_allow_html=True)
 
-        st.markdown("---")
-
-        col_prop_target, col_final_word = st.columns(2)
-        
-        with col_prop_target:
-            st.markdown("### ⚾ PROPS & CIBLES JOUEURS")
-            st.markdown(f"""
-            <div class='card-box'>
-                <b>CIBLES HOME RUNS :</b><br>
-                1. Frappeur Star 1 (ISO élevé vs LHP)<br>
-                2. Frappeur Star 2 (Angle de sortie optimal)<br>
-                3. Frappeur Star 3<br><br>
-                <b>CIBLE STRIKEOUTS :</b><br>
-                🎯 Lanceur Partant ({away_t}) : <b>PLUS DE K's</b>
-            </div>
-            """, unsafe_allow_html=True)
-            
-        with col_final_word:
-            st.markdown("### 🏆 MOT DE LA FIN (FINAL WORD)")
-            st.markdown(f"""
-            <div class='card-box' style="background-color:#161b22; border: 2px solid #58a6ff;">
-                <p style="font-size:1.1rem;"><b>SOUTENEZ {away_t.upper()}.</b> LE LANCEUR DONNE L'AVANTAGE DÉCISIF LÀ OÙ ÇA COMPTE LE PLUS.</p>
-                <h3 style="color:#58a6ff; text-align:center;">LET'S GET PAID! 💰</h3>
-                <p style="text-align:center; color:#3fb950; font-weight:bold;">Indice de Confiance Global : 79% (PARI SOLIDE)</p>
-            </div>
-            """, unsafe_allow_html=True)
-
     else:
         st.info("En attente des données de matchs pour afficher l'analyse.")
 
 # ==========================================
-# ONGLET 3 : CALENDRIER DES MATCHS (DESIGN CARTES)
+# ONGLET 3 : CALENDRIER DES MATCHS
 # ==========================================
 with tab3:
     st.header("📅 Calendrier & Planning des Matchs NPB")
@@ -259,8 +225,7 @@ with tab3:
                             <span style="color:#58a6ff; font-weight:bold; font-size:1.05rem;">⏰ {time_str}</span>
                         </td>
                         <td width="50%" style="font-size:1.1rem;">
-                            ✈️ <b>{away_team}</b><br>
-                            🏠 <b>{home_team}</b>
+                            ✈️ <b>{away_team}</b><br>🏠 <b>{home_team}</b>
                         </td>
                         <td width="20%" align="right">
                             <span class="odds-badge">NPB SÉRIE</span><br>
@@ -274,17 +239,51 @@ with tab3:
         st.warning("Aucun match planifié n'a pu être récupéré pour le moment.")
 
 # ==========================================
-# ONGLET 4 : GESTION BANKROLL (MODERNISÉ)
+# ONGLET 4 : GESTION BANKROLL (AVEC SAISIE MANUELLE)
 # ==========================================
 with tab4:
     st.header("📈 Dashboard & Suivi de Bankroll")
-    st.markdown("Suivi dynamique de votre progression vers l'objectif ultime de **1 000 €** à partir de **20 €**.")
+    st.markdown("Enregistrez vos paris passés ci-dessous pour mettre à jour automatiquement votre capital et suivre votre progression vers les **1 000 €**.")
     st.markdown("---")
 
-    # Calculs indicateurs
+    # Formulaire d'ajout de pari manuel
+    with st.form("add_bet_form"):
+        st.subheader("➕ Enregistrer un Résultat de Pari")
+        col_f1, col_f2, col_f3, col_f4 = st.columns(4)
+        
+        bet_desc = col_f1.text_input("Libellé du Pari (ex: Hanshin Tigers ML)")
+        bet_stake = col_f2.number_input("Mise (€)", min_value=0.1, value=2.0, step=0.5)
+        bet_odds = col_f3.number_input("Cote", min_value=1.01, value=1.90, step=0.01)
+        bet_result = col_f4.selectbox("Résultat", ["Gagné", "Perdu", "Remboursé"])
+        
+        submitted = st.form_submit_button("Valider et Mettre à Jour le Capital")
+        if submitted:
+            # Calcul du gain/perte
+            if bet_result == "Gagné":
+                profit_loss = (bet_stake * bet_odds) - bet_stake
+            elif bet_result == "Perdu":
+                profit_loss = -bet_stake
+            else:
+                profit_loss = 0.0
+                
+            new_total = current_bankroll + profit_loss
+            
+            # Ajout à l'historique de session
+            st.session_state.bankroll_history.append({
+                "Date": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+                "Événement": f"{bet_desc} ({bet_result})",
+                "Montant (€)": profit_loss,
+                "Capital Total (€)": new_total
+            })
+            st.success(pari_msg := f"Pari enregistré avec succès ! Variation : {profit_loss:+.2f} € | Nouveau Capital : {new_total:.2f} €")
+            st.rerun()
+
+    st.markdown("---")
+
+    # Calculs indicateurs mis à jour
     start_capital = 20.0
-    profit = current_bankroll - start_capital
-    roi_percent = (profit / start_capital) * 100 if start_capital > 0 else 0
+    total_profit = current_bankroll - start_capital
+    roi_percent = (total_profit / start_capital) * 100 if start_capital > 0 else 0
     progress_percent = min(max((current_bankroll / 1000.0) * 100, 0.0), 100.0)
 
     # Grille de KPIs Modernes
@@ -301,7 +300,7 @@ with tab4:
         st.markdown(f"""
         <div class='kpi-container'>
             <span style="color:#8b949e; font-size:0.9rem;">PROFIT NET</span>
-            <h2 style="color:#3fb950; margin:5px 0;">{profit:+.2f} €</h2>
+            <h2 style="color:#3fb950; margin:5px 0;">{total_profit:+.2f} €</h2>
             <span style="color:#8b949e; font-size:0.85rem;">ROI : {roi_percent:+.1f}%</span>
         </div>
         """, unsafe_allow_html=True)
@@ -322,23 +321,21 @@ with tab4:
         </div>
         """, unsafe_allow_html=True)
 
-    # Barre de progression visuelle intégrée
+    # Barre de progression
     st.markdown("### 🎯 Progression vers l'Objectif 1000 €")
     st.progress(progress_percent / 100.0)
     st.caption(f"Il vous reste {(1000.0 - current_bankroll):.2f} € à générer pour valider le défi.")
 
     st.markdown("---")
 
-    # Graphique d'évolution moderne
+    # Graphique d'évolution basé sur l'historique réel des paris saisis
     st.markdown("### 📊 Trajectoire Graphique de la Bankroll")
-    steps = [start_capital, current_bankroll]
-    dates = ["Départ (20 €)", "Aujourd'hui"]
-    df_bk = pd.DataFrame({"Étape": dates, "Capital": steps})
+    df_bk = pd.DataFrame(st.session_state.bankroll_history)
     
     fig = px.area(
         df_bk, 
-        x="Étape", 
-        y="Capital", 
+        x="Date", 
+        y="Capital Total (€)", 
         markers=True, 
         template="plotly_dark"
     )
@@ -351,3 +348,7 @@ with tab4:
         margin=dict(l=20, r=20, t=30, b=20)
     )
     st.plotly_chart(fig, use_container_width=True)
+
+    # Affichage du tableau de l'historique
+    st.markdown("### 📝 Historique des Transactions")
+    st.dataframe(df_bk, use_container_width=True)
